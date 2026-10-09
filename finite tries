@@ -1,0 +1,180 @@
+"""Number Guessing Game
+Demonstrates conditional statements (if/elif/else), functions, and loops.
+"""
+
+import random
+
+DIFFICULTIES = {
+    '1': ('Easy', 1, 50, 10),     # name, low, high, max attempts
+    '2': ('Medium', 1, 100, 7),
+    '3': ('Hard', 1, 200, 6),
+}
+
+
+def check_guess(guess, secret):
+    """Compare a guess to the secret number. Returns 'Too low', 'Too high', or 'Correct'."""
+    if guess < secret:
+        return 'Too low'
+    elif guess > secret:
+        return 'Too high'
+    else:
+        return 'Correct'
+
+
+def is_valid_guess(guess, low, high):
+    """Return True if the guess is within the allowed range."""
+    return low <= guess <= high
+
+
+def calculate_score(attempts_used, max_attempts):
+    """Return a score out of 100. Fewer attempts means a higher score."""
+    if attempts_used < 1 or attempts_used > max_attempts:
+        return 0
+    return round(100 * (max_attempts - attempts_used + 1) / max_attempts)
+
+
+def choose_difficulty(input_func=input):
+    """Ask the player for a difficulty. Returns (name, low, high, max_attempts)."""
+    while True:
+        print('\nChoose difficulty:')
+        for key, (name, low, high, attempts) in DIFFICULTIES.items():
+            print(f'  {key}) {name}: number between {low} and {high}, {attempts} attempts')
+        choice = input_func('Your choice: ').strip()
+        if choice in DIFFICULTIES:
+            return DIFFICULTIES[choice]
+        print('Invalid choice. Pick 1, 2, or 3.')
+
+
+def play_round(secret, low, high, max_attempts, input_func=input):
+    """Play one round. Returns the number of attempts used if won, or None if lost."""
+    attempts = 0
+    while attempts < max_attempts:
+        remaining = max_attempts - attempts
+        text = input_func(f'\nGuess ({remaining} attempts left): ').strip()
+
+        try:
+            guess = int(text)
+        except ValueError:
+            print('Please enter a whole number.')
+            continue
+
+        if not is_valid_guess(guess, low, high):
+            print(f'Your guess must be between {low} and {high}.')
+            continue
+
+        attempts += 1
+        result = check_guess(guess, secret)
+        if result == 'Correct':
+            print(f'Correct! You got it in {attempts} attempt(s).')
+            return attempts
+        print(result + '.')
+
+    print(f'Out of attempts. The number was {secret}.')
+    return None
+
+
+def main():
+    print('Welcome to the Number Guessing Game!')
+    games_played = 0
+    games_won = 0
+
+    while True:
+        name, low, high, max_attempts = choose_difficulty()
+        secret = random.randint(low, high)
+        print(f'\nI am thinking of a number between {low} and {high}.')
+
+        attempts_used = play_round(secret, low, high, max_attempts)
+        games_played += 1
+        if attempts_used is not None:
+            games_won += 1
+            print(f'Score: {calculate_score(attempts_used, max_attempts)}/100')
+
+        again = input('\nPlay again? (y/n): ').strip().lower()
+        if again != 'y':
+            break
+
+    print(f'\nYou won {games_won} of {games_played} game(s). Thanks for playing!')
+
+
+# ---------------------------------------------------------------
+# Tests (run with: python number_guessing_game.py --test)
+# ---------------------------------------------------------------
+
+def make_input(answers):
+    """Return a fake input() function that feeds in a fixed list of answers."""
+    answers = iter(answers)
+    return lambda prompt='': next(answers)
+
+
+def test_check_guess():
+    assert check_guess(10, 50) == 'Too low'
+    assert check_guess(90, 50) == 'Too high'
+    assert check_guess(50, 50) == 'Correct'
+
+
+def test_is_valid_guess():
+    assert is_valid_guess(1, 1, 100) is True
+    assert is_valid_guess(100, 1, 100) is True
+    assert is_valid_guess(0, 1, 100) is False
+    assert is_valid_guess(101, 1, 100) is False
+
+
+def test_calculate_score():
+    assert calculate_score(1, 10) == 100
+    assert calculate_score(10, 10) == 10
+    assert calculate_score(5, 10) == 60
+    assert calculate_score(0, 10) == 0
+    assert calculate_score(11, 10) == 0
+
+
+def test_play_round_win():
+    answers = ['10', '90', '50']
+    result = play_round(50, 1, 100, 7, input_func=make_input(answers))
+    assert result == 3
+
+
+def test_play_round_loss():
+    answers = ['1', '2', '3']
+    result = play_round(50, 1, 100, 3, input_func=make_input(answers))
+    assert result is None
+
+
+def test_invalid_input_does_not_use_attempts():
+    # 'abc' and 500 are rejected, so the first valid guess is attempt 1
+    answers = ['abc', '500', '50']
+    result = play_round(50, 1, 100, 3, input_func=make_input(answers))
+    assert result == 1
+
+
+def test_choose_difficulty():
+    result = choose_difficulty(input_func=make_input(['9', 'x', '2']))
+    assert result == ('Medium', 1, 100, 7)
+
+
+def run_tests():
+    tests = [
+        test_check_guess,
+        test_is_valid_guess,
+        test_calculate_score,
+        test_play_round_win,
+        test_play_round_loss,
+        test_invalid_input_does_not_use_attempts,
+        test_choose_difficulty,
+    ]
+    passed = 0
+    for test in tests:
+        try:
+            test()
+            print(f'PASS  {test.__name__}')
+            passed += 1
+        except AssertionError:
+            print(f'FAIL  {test.__name__}')
+    print(f'\n{passed}/{len(tests)} tests passed')
+
+
+if __name__ == '__main__':
+    import sys
+    if '--test' in sys.argv:
+        run_tests()
+    else:
+        main()
